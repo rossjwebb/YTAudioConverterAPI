@@ -1,10 +1,3 @@
-# .__   .__                               .___               
-# |  |  |__|__  _  _______              __| _/  ____  ___  __
-# |  |  |  |\ \/ \/ /\__  \    ______  / __ | _/ __ \ \  \/ /
-# |  |__|  | \     /  / __ \_ /_____/ / /_/ | \  ___/  \   / 
-# |____/|__|  \/\_/  (____  /         \____ |  \___  >  \_/  
-#                         \/               \/      \/        
-
 from flask import Flask, request, jsonify, send_from_directory, Response, stream_with_context,make_response
 
 from pytube import YouTube as YT
