@@ -1,3 +1,5 @@
+import googleapiclient.discovery
+from googleapiclient.discovery import build
 from flask import Flask, request, jsonify, send_from_directory, Response, stream_with_context,make_response
 
 from pytube import YouTube as YT
@@ -74,8 +76,8 @@ def generate(host_url, video_url):
             compress_audio("audios/" + file_name + ".mp3")
             # Convert the JSON response to bytes
             response_dict = {
-                'img': thumbnail_url,
-                'direct_link': "http://youtube-1.fishyflick.repl.co/audios/" + file_name + ".mp3",
+                'img': thumbnail_url,'direct_link': host_url + "audios/" + file_name + ".mp3",
+                
                 'expiration_timestamp': expiration_timestamp
             }
             response_json = json.dumps(response_dict)
@@ -94,12 +96,11 @@ def generate(host_url, video_url):
 
 
 
-@app.route('/search', methods=['GET'])
-@limiter.limit("5/minute", error_message="Too many requests")
-from googleapiclient.discovery import build
+
+
 
 # IMPORTANT: Replace with your actual YouTube Data API v3 key
-API_KEY = AIzaSyBk1K2qCYB52-_ANWjTUyItVCv8y9wiqKc
+API_KEY = "AIzaSyBk1K2qCYB52-_ANWjTUyItVCv8y9wiqKc"
 
 @app.route('/search', methods=['GET'])
 @limiter.limit("5/minute", error_message="Too many requests")
@@ -243,19 +244,10 @@ def delete_expired_files():
 
 
 def delete_files_task():
+    if not os.path.exists('audios'):
+        os.makedirs('audios')
     delete_expired_files()
     threading.Timer(100, delete_files_task).start()
 
-def run():
-  app.run(host='0.0.0.0')
-
-
-def keep_alive():
-    t = Thread(target=run)
-    t.start()
-
 if __name__ == '__main__':
-    # Schedule a task to delete expired files every hour
-    delete_files_task()
-    keep_alive()
-    
+    app.run(host='0.0.0.0')
