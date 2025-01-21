@@ -96,26 +96,43 @@ def generate(host_url, video_url):
 
 @app.route('/search', methods=['GET'])
 @limiter.limit("5/minute", error_message="Too many requests")
+from googleapiclient.discovery import build
+
+# IMPORTANT: Replace with your actual YouTube Data API v3 key
+API_KEY = AIzaSyBk1K2qCYB52-_ANWjTUyItVCv8y9wiqKc
+
+@app.route('/search', methods=['GET'])
+@limiter.limit("5/minute", error_message="Too many requests")
 def search():
     q = request.args.get('q')
-    if q is None or len(q) == 0:
-        return jsonify({'error': 'Invalid search query'})
-    else:
-        s = VideosSearch(q, limit=15)
-        results = s.result()["result"]
+    if not q:
+        return jsonify({'error': 'Invalid search query'}), 400
+
+    try:
+        youtube = build("youtube", "v3", developerKey=API_KEY)
+
+        request_yt = youtube.search().list(
+            part="snippet",
+            maxResults=15,
+            q=q,
+            type="video"
+        )
+        response = request_yt.execute()
+
         search_results = []
-        for video in results:
-            duration = video["duration"]
-            if ":" in duration:
-                parts = duration.split(":")
-                if len(parts) == 2:  # Minutes:Seconds format
-                    minutes, seconds = map(int, parts)
-                    total_seconds = minutes * 60 + seconds
-                    if total_seconds < 300:  # Less than 5 minutes
-                        search_results.append({'title': video["title"], 'url': video["link"], 'thumbnail': video["thumbnails"][0]["url"]})
-        response = jsonify({'search': search_results})
-        response.headers.add('Content-Type', 'application/json')
-        return response
+        for item in response.get("items", []):
+            video_data = {
+                'title': item['snippet']['title'],
+                'url': f"https://www.youtube.com/watch?v={item['id']['videoId']}",
+                'thumbnail': item['snippet']['thumbnails']['default']['url']
+            }
+            search_results.append(video_data)
+
+        return jsonify({'search': search_results})
+
+    except Exception as e:
+        print(f"Error during YouTube search: {e}") # Print the error for debugging
+        return jsonify({'error': 'An error occurred during the search'}), 500
 
 
 
