@@ -1,5 +1,5 @@
 # Use a lightweight Python image
-FROM python:3.13-slim
+FROM python:3.9-slim
 
 # Set working directory inside the container
 WORKDIR /app
@@ -22,4 +22,4 @@ COPY . .
 EXPOSE 8000
 
 # Run the app with Gunicorn
-CMD ["gunicorn", "-b", "0.0.0.0:8000", "main:app"]
+CMD ["gunicorn", "--bind", "0.0.0.0:8000", "main:app"]
