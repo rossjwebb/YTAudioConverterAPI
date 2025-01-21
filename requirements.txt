@@ -4,5 +4,5 @@ youtube-dl
 pydub
 requests
 gunicorn
-youtubesearchpython
+youtube-search-python
 google-api-python-client
