@@ -12,7 +12,7 @@ from flask_cors import cross_origin,CORS
 import json
 from threading import Thread
 import threading
-import youtube_dl
+import yt_dlp as youtube_dl
 from pydub import AudioSegment
 from flask_limiter import Limiter
 from flask_limiter.util import get_remote_address
