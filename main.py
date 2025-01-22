@@ -39,7 +39,7 @@ def download_audio():
     
     try:
         # Call Terminal API
-        terminal_url = "https://api.terminal.co/v1/audio/extract"
+        terminal_url = "https://web-production-ef6a6.up.railway.app/download"
         headers = {
             "Authorization": f"Bearer {TERMINAL_API_KEY}",
             "Content-Type": "application/json"
