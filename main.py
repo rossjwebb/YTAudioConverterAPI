@@ -143,6 +143,21 @@ def search():
 @limiter.limit("5/minute", error_message="Too many requests")  # Limit to 5 requests per minute
 def download_audio():
     video_url = request.args.get('video_url')
+    @app.route('/download', methods=['GET'])
+@limiter.limit("5/minute", error_message="Too many requests")  # Limit to 5 requests per minute
+def download_audio():
+    video_url = request.args.get('video_url')  # Get the video URL from the request
+
+    # 🛠 DEBUG: Print the received URL to Railway logs
+    print("🚀 Received video URL:", video_url)
+
+    # If no URL is received, return an error response
+    if not video_url:
+        return {"error": "No video_url received"}, 400
+
+    host_url = request.base_url + '/'
+    return Response(stream_with_context(generate(host_url, video_url)), mimetype='application/json')
+
     host_url = request.base_url + '/'
     return Response(stream_with_context(generate(host_url, video_url)), mimetype='application/json')
 
