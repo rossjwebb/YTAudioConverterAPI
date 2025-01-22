@@ -38,6 +38,12 @@ def get_video_id(url):
         return parsed_url.path[1:]
     return None
 
+@app.route('/')
+def nothing():
+    response = jsonify({'msg': 'Use /download or /audios/<filename>'})
+    response.headers.add('Content-Type', 'application/json')
+    return response
+
 @app.route('/download')
 @limiter.limit("5/minute")
 def download_audio():
@@ -130,8 +136,7 @@ def cleanup_task():
         delete_expired_files()
         time.sleep(300)  # Check every 5 minutes
 
-@app.before_first_request
-def initialize():
+def initialize_app():
     """Initialize the application"""
     if not os.path.exists('audios'):
         os.makedirs('audios')
@@ -141,4 +146,5 @@ def initialize():
     cleanup_thread.start()
 
 if __name__ == '__main__':
+    initialize_app()  # Call initialization before running the app
     app.run(host='0.0.0.0', port=int(os.environ.get('PORT', 5000)))
