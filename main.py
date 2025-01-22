@@ -24,9 +24,15 @@ limiter = Limiter(
 
 def compress_audio(file_path):
     """Compress audio file to MP3 format with reasonable quality"""
-    audio = AudioSegment.from_file(file_path)
-    compressed_audio = audio.export(file_path, format='mp3', bitrate='256k')
-    compressed_audio.close()
+    print(f"🎵 Compressing audio file: {file_path}")
+    try:
+        audio = AudioSegment.from_file(file_path)
+        compressed_audio = audio.export(file_path, format='mp3', bitrate='256k')
+        compressed_audio.close()
+        print(f"✅ Audio compression complete: {file_path}")
+    except Exception as e:
+        print(f"❌ Error compressing audio: {str(e)}")
+        raise e
 
 def get_video_id(url):
     """Extract video ID from YouTube URL"""
@@ -48,15 +54,25 @@ def nothing():
 @limiter.limit("5/minute")
 def download_audio():
     video_url = request.args.get('videoUrl')
+    print(f"📥 Received request for URL: {video_url}")
     
     if not video_url:
+        print("❌ No videoUrl provided")
         return jsonify({"error": "No videoUrl provided"}), 400
     
     try:
         # Extract video ID for filename
         video_id = get_video_id(video_url)
         if not video_id:
+            print("❌ Invalid YouTube URL")
             return jsonify({"error": "Invalid YouTube URL"}), 400
+
+        print(f"📝 Processing video ID: {video_id}")
+
+        # Ensure audios directory exists
+        if not os.path.exists('audios'):
+            print("📁 Creating audios directory")
+            os.makedirs('audios')
 
         ydl_opts = {
             'format': 'bestaudio/best',
@@ -69,15 +85,18 @@ def download_audio():
         }
 
         with youtube_dl.YoutubeDL(ydl_opts) as ydl:
+            print("🔍 Checking video info...")
             # First check video duration
             info = ydl.extract_info(video_url, download=False)
             duration = info.get('duration', 0)
 
             if duration > 300:  # 5 minutes
+                print("❌ Video too long")
                 return jsonify({
                     "error": "Video duration must be less than or equal to 5 minutes"
                 }), 400
 
+            print("⬇️ Downloading audio...")
             # Download and process the audio
             ydl.download([video_url])
             
@@ -85,27 +104,49 @@ def download_audio():
             audio_filename = f"{video_id}.mp3"
             audio_path = os.path.join('audios', audio_filename)
             
+            print(f"🔍 Checking if file exists at: {audio_path}")
+            if not os.path.exists(audio_path):
+                print(f"❌ Audio file not found at: {audio_path}")
+                return jsonify({"error": "Audio file not created"}), 500
+            
             # Compress the audio
             compress_audio(audio_path)
+            
+            # Double check file exists after compression
+            if not os.path.exists(audio_path):
+                print(f"❌ Audio file not found after compression: {audio_path}")
+                return jsonify({"error": "Audio file lost after compression"}), 500
             
             # Construct the audio URL
             host_url = request.host_url.rstrip('/')
             audio_url = f"{host_url}/audios/{audio_filename}"
             
+            print(f"✅ Successfully processed audio. URL: {audio_url}")
             return jsonify({
                 "audioUrl": audio_url,
                 "expirationTimestamp": int(time.time()) + RETENTION_PERIOD
             })
 
     except Exception as e:
-        print(f"Error processing video: {str(e)}")
+        print(f"❌ Error processing video: {str(e)}")
         return jsonify({"error": str(e)}), 500
 
 @app.route('/audios/<path:filename>')
 @limiter.limit("2/5seconds")
 def serve_audio(filename):
     """Serve audio files with proper headers"""
+    print(f"🎵 Request to serve audio file: {filename}")
     try:
+        # Get absolute path
+        root_dir = os.getcwd()
+        file_path = os.path.join(root_dir, 'audios', filename)
+        print(f"🔍 Looking for file at: {file_path}")
+        
+        if not os.path.exists(file_path):
+            print(f"❌ File not found: {file_path}")
+            return jsonify({"error": "Audio file not found"}), 404
+
+        print(f"✅ Serving file: {file_path}")
         return send_from_directory(
             'audios',
             filename,
@@ -113,11 +154,16 @@ def serve_audio(filename):
             mimetype='audio/mpeg'
         )
     except FileNotFoundError:
+        print(f"❌ FileNotFoundError for: {filename}")
         return jsonify({"error": "Audio file not found"}), 404
+    except Exception as e:
+        print(f"❌ Error serving file: {str(e)}")
+        return jsonify({"error": "Error serving file"}), 500
 
 def delete_expired_files():
     """Remove audio files that have exceeded the retention period"""
     current_time = time.time()
+    print("🧹 Checking for expired files...")
     if os.path.exists('audios'):
         for filename in os.listdir('audios'):
             file_path = os.path.join('audios', filename)
@@ -126,9 +172,9 @@ def delete_expired_files():
                 if file_age > RETENTION_PERIOD:
                     try:
                         os.remove(file_path)
-                        print(f"Deleted expired file: {filename}")
+                        print(f"🗑️ Deleted expired file: {filename}")
                     except Exception as e:
-                        print(f"Error deleting {filename}: {str(e)}")
+                        print(f"❌ Error deleting {filename}: {str(e)}")
 
 def cleanup_task():
     """Periodic cleanup task"""
@@ -138,12 +184,16 @@ def cleanup_task():
 
 def initialize_app():
     """Initialize the application"""
+    print("🚀 Initializing application...")
     if not os.path.exists('audios'):
+        print("📁 Creating audios directory")
         os.makedirs('audios')
     
+    print("🧵 Starting cleanup thread")
     # Start cleanup thread
     cleanup_thread = threading.Thread(target=cleanup_task, daemon=True)
     cleanup_thread.start()
+    print("✅ Initialization complete")
 
 if __name__ == '__main__':
     initialize_app()  # Call initialization before running the app
